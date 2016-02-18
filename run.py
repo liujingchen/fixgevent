@@ -3,7 +3,7 @@ from gevent.monkey import patch_all
 from time import sleep
 import sys
 
-if sys.argv[0] == 'break':
+if len(sys.argv) > 1 and sys.argv[1] == 'break':
     patch_all()
 manager = Manager()
 shared_dict = manager.dict()
