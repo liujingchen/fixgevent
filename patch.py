@@ -1,44 +1,41 @@
-import socket
+import new
+import sys
+from gevent.monkey import saved
+from inspect import getmembers
+import multiprocessing.connection
+import multiprocessing.managers
+import multiprocessing.forking
+import multiprocessing.heap
+import multiprocessing.pool
+import multiprocessing.process
+import multiprocessing.queues
+import multiprocessing.reduction
+import multiprocessing.sharedctypes
+import multiprocessing.synchronize
+import multiprocessing.util
 
 
-class Connection(object):
-    def __init__(self, handle, readable=True, writable=True):
-        self._socket = socket.fromfd(handle, socket.AF_UNIX, socket.SOCK_STREAM)
-        """
-        self._connection = OldConnection(handle, readable, writable)
-        self.closed = self._connection.closed
-        self.readable = self._connection.readable
-        self.writable = self._connection.writable
-        """
-
-    def close(self, *args, **kwargs):
-        return self._socket.close(*args, **kwargs)
-
-    def fileno(self, *args, **kwargs):
-        return self._socket.fileno(*args, **kwargs)
-
-    def poll(self, *args, **kwargs):
-        return self._socket.poll(*args, **kwargs)
-
-    def recv(self, *args, **kwargs):
-        return self._socket.recv(*args, **kwargs)
-
-    def recv_bytes(self, *args, **kwargs):
-        return self._socket.recv_bytes(*args, **kwargs)
-
-    def recv_bytes_into(self, *args, **kwargs):
-        return self._socket.recv_bytes(*args, **kwargs)
-
-    def send(self, *args, **kwargs):
-        return self._socket.send(*args, **kwargs)
-
-    def send_bytes(self, *args, **kwargs):
-        return self._socket.send_bytes(*args, **kwargs)
-
-    def __repr__(self):
-        return self._socket.__repr__()
+def my_dirty_patch():
+    patched_modules = dict()
+    for module_name in saved:
+        patched_modules[module_name] = _duplicate_patched_module(module_name)
+    # actually only unpatching multiprocessing.connection is enough to fix socket problem.
+    # but we may need these sooner or later.
+    for sub_module in [multiprocessing.connection, multiprocessing.managers, multiprocessing.forking,
+                       multiprocessing.heap, multiprocessing.pool, multiprocessing.process, multiprocessing.queues,
+                       multiprocessing.reduction, multiprocessing.sharedctypes, multiprocessing.synchronize,
+                       multiprocessing.util]:
+        for patched_module_name, patched_module in patched_modules.iteritems():
+            if getattr(sub_module, patched_module_name, None):
+                setattr(sub_module, patched_module_name, patched_module)
 
 
-def my_patch():
-    import _multiprocessing
-    _multiprocessing.Connection = Connection
+def _duplicate_patched_module(module_name):
+    # create a new empty module, copy everything from current loaded module (already patched by gevent),
+    # then copy every old thing from gevent's "saved".
+    m = new.module(module_name)
+    for item_name, item in getmembers(sys.modules[module_name]):
+        setattr(m, item_name, item)
+    for item_name, item in saved[module_name].iteritems():
+        setattr(m, item_name, item)
+    return m

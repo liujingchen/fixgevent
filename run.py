@@ -1,10 +1,11 @@
+import sys
+from gevent.monkey import patch_all
+from patch import my_dirty_patch
 from multiprocessing import Manager, Process
 import multiprocessing.util as util
-from gevent.monkey import patch_all
 from time import sleep
 from logging import StreamHandler, Formatter
-import sys
-from patch import my_patch
+
 logger = util.get_logger()
 logger.setLevel("DEBUG")
 handler = StreamHandler(sys.stdout)
@@ -15,10 +16,19 @@ logger.addHandler(handler)
 
 if len(sys.argv) > 1:
     if sys.argv[1] == 'break':
-        patch_all()
+        # We first try to solve the socket problem, thread and sys will be other stories.
+        patch_all(socket=True, dns=True, time=True, select=True, os=True, ssl=True, subprocess=True, aggressive=True,
+                  sys=False, thread=False, Event=False)
     elif sys.argv[1] == 'fix':
-        patch_all()
-        my_patch()
+        # our dirty patch can fix socket now.
+        patch_all(socket=True, dns=True, time=True, select=True, os=True, ssl=True, subprocess=True, aggressive=True,
+                  sys=False, thread=False, Event=False)
+        my_dirty_patch()
+else:
+    # will not break as long as socket, thread and sys is not patched.
+    patch_all(socket=False, dns=True, time=True, select=True, os=True, ssl=True, subprocess=True, aggressive=True,
+              sys=False, thread=False, Event=False)
+
 
 manager = Manager()
 shared_dict = manager.dict()
