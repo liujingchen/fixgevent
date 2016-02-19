@@ -4,6 +4,7 @@ from gevent.monkey import patch_all
 from time import sleep
 from logging import StreamHandler, Formatter
 import sys
+from patch import my_patch
 logger = util.get_logger()
 logger.setLevel("DEBUG")
 handler = StreamHandler(sys.stdout)
@@ -12,8 +13,13 @@ _DEFAULT_FORMAT = '%(asctime)s %(levelname)s %(name)s: %(message)s [in %(pathnam
 handler.setFormatter(Formatter(_DEFAULT_FORMAT))
 logger.addHandler(handler)
 
-if len(sys.argv) > 1 and sys.argv[1] == 'break':
-    patch_all()
+if len(sys.argv) > 1:
+    if sys.argv[1] == 'break':
+        patch_all()
+    elif sys.argv[1] == 'fix':
+        patch_all()
+        my_patch()
+
 manager = Manager()
 shared_dict = manager.dict()
 shared_dict['count'] = 0
